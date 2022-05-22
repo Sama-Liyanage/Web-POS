@@ -1,0 +1,35 @@
+footer{
+    position: relative;
+    top: 250px;
+    height: 40px;
+    background-color: black;
+}
+
+footer p{
+    font-size: 15px;
+    color: white;
+    display: inline-block;
+    margin: auto;
+    position: relative;
+    left: 31vw;
+    top: 1vh;
+}
+
+#myForm{
+    position: relative;
+    top: 40px;
+    padding:12px;
+}
+
+.card {
+    position: relative;
+    top: 10px;
+}
+
+body{
+    overflow-x: hidden;
+}
+
+
+
+
