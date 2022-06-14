@@ -1,8 +1,8 @@
-generateOrderId();
-loadAllItemIds();
-loadAllCustomerIds();
+/*generateOrderId();*/
 
-$("#cartTbl").css('overflow')
+var cartItems=new Array();
+
+$("#cartTbl").css('overflow');
 var regDecimal = /^([0-9.]{1,})$/;
 var regExOrderId = /^(OD-)[0-9]{3}$/;
 var regExCusQty = /^([0-9]{1,})$/;
@@ -33,6 +33,11 @@ $("#cusQtyPlaceOrder").keyup(function (e) {
 
 $("#cashPlaceOrder").keyup(function (e) {
     setBalance();
+    enableDisablePlaceOrderBtn();
+
+});
+$("#orderIdPlaceOrder").keyup(function (e) {
+    validateOrderId();
 
 });
 
@@ -44,6 +49,7 @@ $("#discountPlaceOrder").keyup(function (e) {
         $("#errorDiscount").css('display', 'none');
         setNetTotal();
         setBalance();
+        enableDisablePlaceOrderBtn();
         if (e.key == "Enter") {
 
         }
@@ -56,23 +62,28 @@ $("#discountPlaceOrder").keyup(function (e) {
 
 });
 
-$("#orderIdPlaceOrder").keyup(function (e) {
-    if (validateOrderId()) {
-        findOrder();
-    }
+$("#searchOrder").click(function (){
+    findOrder();
+
 });
 
 
 $("#selectCustomer").on('change', function () {
-
     let selectedId = $(this).find('option:selected').html();
 
-    customers.find(function (e) {
-        if (e.getId() === selectedId) {
-            $("#cusIdPlaceOrder").val(e.getId());
-            $("#cusNamePlaceOrder").val(e.getName());
-            $("#cusAddressPlaceOrder").val(e.getAddress());
-            $("#cusTelPlaceOrder").val(e.getTel());
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/order?option=Customer&id="+ selectedId,
+        method: "GET",
+        success: function (resp) {
+
+            $("#cusIdPlaceOrder").val(resp.id);
+            $("#cusNamePlaceOrder").val(resp.name);
+            $("#cusAddressPlaceOrder").val(resp.address);
+            $("#cusTelPlaceOrder").val(resp.contact_No);
+
+        },
+        error: function (ob, statusText, error) {
+            alert("There is no customer with this ID");
         }
     });
 
@@ -80,17 +91,29 @@ $("#selectCustomer").on('change', function () {
 });
 
 $("#selectItem").on('change', function () {
-
     let selectedId = $(this).find('option:selected').html();
 
-    items.find(function (e) {
-        if (e.getId() === selectedId) {
-            $("#itemIdPlaceOrder").val(e.getId());
-            $("#itemNamePlaceOrder").val(e.getName());
-            $("#pricePlaceOrder").val(e.getPrice());
-            $("#qtyPlaceOrder").val(e.getQty());
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/order?option=Item&id="+ selectedId,
+        method: "GET",
+        success: function (resp) {
+            $("#itemId").val(resp.itemId);
+            $("#itemName").val(resp.itemName);
+            $("#price").val(resp.price);
+            $("#Qty").val(resp.qty);
+
+            $("#itemIdPlaceOrder").val(resp.itemId);
+            $("#itemNamePlaceOrder").val(resp.itemName);
+            $("#pricePlaceOrder").val(resp.price);
+            $("#qtyPlaceOrder").val(resp.qty);
+
+        },
+        error: function (ob, statusText, error) {
+            alert("There is no item with this ID");
         }
     });
+
+
 
 
 });
@@ -98,51 +121,116 @@ $("#selectItem").on('change', function () {
 
 
 function placeOrder() {
-    let orderId = $("#orderIdPlaceOrder").val();
-    let orderDate = $("#orderDatePlaceOrder").val();
-    let orderCusId = $("#cusIdPlaceOrder").val();
 
-    orders.push(new Order(orderId, orderDate, orderCusId, cartItems));
-    for (let cartItem of cartItems) {
-        for (let i = 0; i < items.length; i++) {
-            if (cartItem.getId()===items[i].getId()){
-                let newQtyInHand=parseInt(items[i].getQty())-parseInt(cartItem.getQty());
-                items[i].setQty(newQtyInHand);
-            }
-        }
+
+    var order = {
+        orderId:$("#orderIdPlaceOrder").val(),
+        orderDate:$("#orderDatePlaceOrder").val(),
+        cusId:$("#cusIdPlaceOrder").val(),
+        total:$("#netTotalPlaceOrder").text(),
+        orderItems:cartItems
     }
-    loadAllItems();
-    clearAll();
+
+
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/order",
+        method: "POST",
+        data: JSON.stringify(order),
+        success: function (res) {
+            console.log(res);
+            if (res.status == 200) {
+                console.log(res)
+                alert(res.message);
+
+                loadAllItems();
+                clearAll();
+
+            } else {
+                alert(res.data);
+            }
+
+        },
+        error: function (ob, textStatus, error) {
+            console.log(ob);
+            console.log(textStatus);
+            console.log(error);
+            console.log()
+        }
+    });
+
+
 }
 
 function findOrder(){
-    orders.find(function (o) {
-        if (o.getId() === $("#orderIdPlaceOrder").val()) {
-            $("#orderDatePlaceOrder").val(o.getDate());
-            customers.find(function (c) {
-                if (c.getId() === o.getCusId()) {
-                    $("#cusIdPlaceOrder").val(c.getId());
-                    $("#cusNamePlaceOrder").val(c.getName());
-                    $("#cusAddressPlaceOrder").val(c.getAddress());
-                    $("#cusTelPlaceOrder").val(c.getTel());
-                }
-            });
-            cartItems = o.getOrderItems();
-            loadCartTable();
+    let orderId = $("#orderSearchID").val();
+
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/order?option=SearchOrder&id="+ orderId,
+        method: "GET",
+        success: function (resp) {
+            $("#orderDatePlaceOrder").val(resp.orderDate);
+            $("#netTotalPlaceOrder").text(resp.total);
+            $("#grossTotalPlaceOrder").text(resp.total);
+            $("#selectCustomer").val(resp.cusId);
+            $("#selectCustomer").trigger("change");
+
+
+            let i=0;
+
+            for (let orderItem of resp.orderItems) {
+
+                $.ajax({
+                    url: "http://localhost:8080/BackEnd/order?option=Item&id="+ orderItem.itemCode,
+                    method: "GET",
+                    success: function (response) {
+                        i++;
+                        let total=parseFloat(response.price)*parseInt(orderItem.cusQty);
+                        cartItems.push(new CartItem(orderItem.itemCode,response.itemName,response.price,orderItem.cusQty,total))
+                        console.log(cartItems)
+                        if (resp.orderItems.length==i){
+                            loadCartTable();
+                        }
+                    },
+                    error: function (ob, statusText, error) {
+
+                    }
+                });
+
+            }
+
+
+
+
+        },
+        error: function (ob, statusText, error) {
+            alert("There is no Order with this Id");
         }
     });
+
+    /*  orders.find(function (o) {
+          if (o.getId() === $("#orderIdPlaceOrder").val()) {
+              $("#orderDatePlaceOrder").val(o.getDate());
+              $("#netTotalPlaceOrder").val(o.getTotal());
+              $("#grossTotalPlaceOrder").val(o.getTotal());
+              customers.find(function (c) {
+                  if (c.getId() === o.getCusId()) {
+                      $("#cusIdPlaceOrder").val(c.getId());
+                      $("#cusNamePlaceOrder").val(c.getName());
+                      $("#cusAddressPlaceOrder").val(c.getAddress());
+                      $("#cusTelPlaceOrder").val(c.getTel());
+                  }
+              });
+
+              cartItems = o.getOrderItems();
+              loadCartTable();
+          }
+      });*/
 }
 
-
-function validateAllPlaceOrder() {
+function validateAllPlaceOrder(){
     let today = new Date().getDate();
 
     if (validateOrderId()) {
-
-        //if ($("#orderIdPlaceOrder").val()===today){
-        //$("#orderDatePlaceOrder").css('border-color', 'Green');
-        //$("#errorOrderDate").css('display', 'none');
-
         if ($("#cusIdPlaceOrder").val()!==''){
             if (cartItems.length!==0){
                 if (validateCash()) {
@@ -151,22 +239,22 @@ function validateAllPlaceOrder() {
                     return false;
                 }
             }else {
-                alert("Please add an item");
                 return false;
             }
-
         }else{
-            alert("Please select an customer");
             return false;
         }
-
-        //}else {
-        //$("#orderDatePlaceOrder").css('border-color', 'Red');
-        //$("#errorOrderDate").css('display', 'block');
-        //return false;
-        //}
     } else {
         return false;
+    }
+}
+
+function enableDisablePlaceOrderBtn() {
+    console.log("enable place order")
+    if (validateAllPlaceOrder()){
+        $("#btnPlaceOrder").attr('disabled', false);
+    }else {
+        $("#btnPlaceOrder").attr('disabled', true);
     }
 }
 
@@ -174,15 +262,17 @@ function validateOrderId(){
     if (regExOrderId.test($("#orderIdPlaceOrder").val())){
         $("#orderIdPlaceOrder").css('border-color', 'Green');
         $("#errorOrderId").css('display', 'none');
-        if (isOrderIdExist()){
+        return true;
+        /*if (isOrderIdExist()){
             return false;
         }else {
             return true;
-        }
+        }*/
 
     }else {
         $("#orderIdPlaceOrder").css('border-color', 'Red');
         $("#errorOrderId").css('display', 'block');
+        return false;
     }
 }
 
@@ -196,12 +286,11 @@ function validateCash(){
     }else {
         $("#cashPlaceOrder").css('border-color', 'Red');
         $("#balancePlaceOrder").val("");
-        alert("! Insufficient cash");
         return false;
     }
 }
 
-
+/*
 function isOrderIdExist(){
     orders.find(function (e){
         if (e.getId()===$("#orderIdPlaceOrder").val() ){
@@ -209,8 +298,9 @@ function isOrderIdExist(){
         }
     });
     return false;
-}
+}*/
 
+/*
 function generateOrderId() {
     var tempId;
     if (orders.length !== 0) {
@@ -225,55 +315,18 @@ function generateOrderId() {
     }
 
     $("#orderIdPlaceOrder").val(tempId);
-}
+}*/
 
-function setDate() {
-
-    $('#orderDatePlaceOrder').datepicker().datepicker('setDate', 'today');
-}
-
-function setGrossTotal() {
-    let grossTotal = 0;
-    for (let cartItem of cartItems) {
-        grossTotal = parseFloat(grossTotal) + parseFloat(cartItem.getTotal());
-    }
-    $("#grossTotalPlaceOrder").text(grossTotal);
-    setNetTotal();
-}
-
-function setNetTotal() {
-    let discount = parseFloat($("#discountPlaceOrder").val());
-    let grossTotal = parseFloat($("#grossTotalPlaceOrder").text());
-    let netTotal = grossTotal;
-    console.log(discount);
-    console.log(netTotal);
-    if (!isNaN(discount)) {
-        netTotal = grossTotal - ((grossTotal * discount) / 100.0);
-        console.log(netTotal)
-    }
-
-    $("#netTotalPlaceOrder").text(netTotal);
-}
-
-function setBalance() {
-    let cash = parseFloat($("#cashPlaceOrder").val());
-    let netTotal = parseFloat($("#netTotalPlaceOrder").text());
-
-    if (!isNaN(cash)) {
-        let balance = cash - netTotal;
-        $("#balancePlaceOrder").text(balance);
-    }
-
-}
 
 function loadAllItemIds() {
     $("#selectItem>option").remove();
-    let i = 1;
 
-    for (let item of items) {
-        let option = `<option value="i">${item.getId()}</option>`;
+
+    for (let item of itemsArray) {
+
+        let option = `<option value="${item.itemId}">${item.itemId}</option>`;
         $("#selectItem").append(option);
-        i++;
+
     }
 
 }
@@ -281,18 +334,21 @@ function loadAllItemIds() {
 function loadAllCustomerIds() {
     $("#selectCustomer>option").remove();
 
-    let i = 1;
-    for (let customer of customers) {
-        let option = `<option value="i">${customer.getId()}</option>`;
+
+    for (let customer of customersArray) {
+        let option = `<option value="${customer.id}">${customer.id}</option>`;
         $("#selectCustomer").append(option);
-        i++;
+
     }
 
 
 }
 
+
+
 function addItemToCart() {
 
+    let orderId = $("#orderIdPlaceOrder").val();
     let itemCode = $("#itemIdPlaceOrder").val();
     let itemName = $("#itemNamePlaceOrder").val();
     let price = $("#pricePlaceOrder").val();
@@ -302,8 +358,8 @@ function addItemToCart() {
     for (let i = 0; i < cartItems.length; i++) {
         if (cartItems[i].getId() === itemCode) {
             let newQty
-            if ($("#addCart").text() === "Add") {
-                newQty = parseInt(cartItems[i].getQty()) + parseInt(cusQty);
+            if (!isNaN(itemCode) && ("#addCart").text() === "Add") {
+                newQty = parseInt(cartItems[i].getCusQty()) + parseInt(cusQty);
             } else {
                 newQty = cusQty;
             }
@@ -320,12 +376,47 @@ function addItemToCart() {
     }
 
 
-    cartItems.push(new OrderDetail(itemCode, itemName, price, cusQty, total));
+    cartItems.push(new CartItem(itemCode,itemName,price,cusQty,total));
 
 
     loadCartTable();
     clearItemFields();
     setGrossTotal();
+
+}
+
+/*function setDate() {
+    $('#orderDatePlaceOrder').datepicker().datepicker('setDate', 'today');
+}*/
+
+function setGrossTotal() {
+    let grossTotal = 0;
+    for (let cartItem of cartItems) {
+        grossTotal = parseFloat(grossTotal) + parseFloat(cartItem.getTotal());
+    }
+    $("#grossTotalPlaceOrder").text(grossTotal);
+    setNetTotal();
+}
+
+function setNetTotal() {
+    let discount = parseFloat($("#discountPlaceOrder").val());
+    let grossTotal = parseFloat($("#grossTotalPlaceOrder").text());
+    let netTotal = grossTotal;
+    if (!isNaN(discount)) {
+        netTotal = grossTotal - ((grossTotal * discount) / 100.0);
+    }
+
+    $("#netTotalPlaceOrder").text(netTotal);
+}
+
+function setBalance() {
+    let cash = parseFloat($("#cashPlaceOrder").val());
+    let netTotal = parseFloat($("#netTotalPlaceOrder").text());
+
+    if (!isNaN(cash)) {
+        let balance = cash - netTotal;
+        $("#balancePlaceOrder").text(balance);
+    }
 
 }
 
@@ -397,7 +488,7 @@ function clearAll() {
     clearBillDetails();
     $("#cartTbl>tr").remove();
     cartItems = [];
-    generateOrderId();
+    /*  generateOrderId();*/
 }
 
 
@@ -406,9 +497,8 @@ $("#addCart").click(function () {
 });
 
 $("#btnPlaceOrder").click(function () {
-    if (validateAllPlaceOrder()){
-        placeOrder();
-    }
+    placeOrder();
+
 
 });
 
@@ -416,3 +506,50 @@ $("#btnCancelPlaceOrder").click(function () {
     clearAll();
 });
 
+
+
+function CartItem(id, name, price, qty, total) {
+    this.itemId = id;
+    this.itemName = name;
+    this.itemPrice = price;
+    this.itemQty = qty;
+    this.total = total;
+
+    this.getId = function () {
+        return this.itemId;
+    }
+    this.setId = function (_id) {
+        this.itemId = _id;
+    }
+
+    this.getName = function () {
+        return this.itemName;
+    }
+
+    this.setName = function (_name) {
+        this.itemName = _name;
+    }
+    this.getPrice = function () {
+        return this.itemPrice;
+    }
+
+    this.setPrice = function (_price) {
+        this.itemPrice = _price;
+    }
+    this.getQty = function () {
+        return this.itemQty;
+    }
+
+    this.setQty= function (_qty) {
+        this.itemQty = _qty;
+    }
+
+    this.getTotal = function () {
+        return this.total;
+    }
+
+    this.setTotal= function (_total) {
+        this.total = _total;
+    }
+
+}

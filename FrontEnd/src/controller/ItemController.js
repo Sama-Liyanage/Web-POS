@@ -1,113 +1,153 @@
-/*Item*/
-
-generateItemId();
+/*generateItemId();*/
+loadAllItems();
 
 var regExItemId = /^(I-)[0-9]{3}$/;
 var regExItemName = /^([A-z0-9/,\s]{3,})$/;
 var regExPrice = /^([0-9.]{1,})$/;
 var regExQty = /^([0-9]{1,})$/;
 
+var itemsArray=[];
 
-/*Focusing Item*/
-$("#txtItemId").keyup(function (e) {
-    enableAddItem();
-    if (regExItemId.test($("#txtItemId").val())) {
-        $("#txtItemId").css('border-color', 'Green');
+function validateItemId(event) {
+    if (regExItemId.test($("#itemId").val())) {
+        $("#itemId").css('border-color', 'Green');
         $("#errorItemId").css('display', 'none');
-        if (e.key == "Enter") {
-            $("#txtItemName").focus();
+        if (event === "Enter") {
+            $("#itemName").focus();
         }
+
     } else {
-        $("#txtItemId").css('border-color', 'Red');
+        $("#itemId").css('border-color', 'Red');
         $("#errorItemId").css('display', 'block');
+
     }
-
-});
-
-$("#txtItemName").keyup(function (e) {
-    enableAddItem();
-    if (regExItemName.test($("#txtItemName").val())) {
-        $("#txtItemName").css('border-color', 'Green');
-        $("#errorItem").css('display', 'none');
-        if (e.key == "Enter") {
-            $("#txtItemPrice").focus();
-        }
-    } else {
-        $("#txtItemName").css('border-color', 'Red');
-        $("#errorItem").css('display', 'block');
-    }
-});
-
-$("#txtItemPrice").keyup(function (e) {
-    enableAddItem();
-    if (regExPrice.test($("#txtItemPrice").val())) {
-        $("#txtItemPrice").css('border-color', 'Green');
-        $("#errorPrice").css('display', 'none');
-        if (e.key == "Enter") {
-            $("#txtItemQty").focus();
-        }
-    } else {
-        $("#txtItemPrice").css('border-color', 'Red');
-        $("#errorPrice").css('display', 'block');
-    }
-
-});
-
-$("#txtItemQty").keyup(function (e) {
-    enableAddItem();
-    if (regExQty.test($("#txtItemQty").val())) {
-        $("#txtItemQty").css('border-color', 'Green');
-        $("#errorQty").css('display', 'none');
-
-        if ($('#AddItem').is(':enabled') && e.key == "Enter") {
-            addItem();
-            $("#txtItemId").focus();
-        }
-    } else {
-        $("#txtItemQty").css('border-color', 'Red');
-        $("#errorQty").css('display', 'block');
-    }
-});
-
-
-function generateItemId(){
-    var tempId;
-    if (items.length!=0){
-
-        var id =items[items.length-1].getId();
-        var temp=id.split("-")[1];
-        temp++;
-        tempId = (temp<10)? "I-00"+ temp : (temp<100) ? "I-0"+temp :"I-"+temp;
-
-    }else{
-        tempId="I-001";
-    }
-    $("#txtItemId").val(tempId);
 }
 
+function validateItemName(event) {
+    if (regExItemName.test($("#itemName").val())) {
+        $("#itemName").css('border-color', 'Green');
+        $("#errorItem").css('display', 'none');
+        if (event == "Enter") {
+            $("#price").focus();
+        }
+
+    } else {
+        $("#itemName").css('border-color', 'Red');
+        $("#errorItem").css('display', 'block');
+
+    }
+}
+
+function validatePrice(event) {
+    if (regExPrice.test($("#price").val())) {
+        $("#price").css('border-color', 'Green');
+        $("#errorPrice").css('display', 'none');
+        if (event == "Enter") {
+            $("#Qty").focus();
+        }
+
+    } else {
+        $("#price").css('border-color', 'Red');
+        $("#errorPrice").css('display', 'block');
+
+    }
+
+}
+
+function validateQty(event) {
+    if (regExQty.test($("#Qty").val())) {
+        $("#Qty").css('border-color', 'Green');
+        $("#errorQty").css('display', 'none');
+
+        if ($('#AddItem').is(':enabled') && event == "Enter") {
+            saveItem();
+            $("#itemId").focus();
+        }
+
+    } else {
+        $("#Qty").css('border-color', 'Red');
+        $("#errorQty").css('display', 'block');
+
+    }
+}
+
+function itemNotExist(){
+    let itemId = $("#itemId").val();
+    for (let item of itemsArray) {
+        if (item.itemId==itemId){
+            return false;
+        }
+    }
+    return true;
+}
 
 function enableAddItem() {
-    if (itemNotExist() && regExItemId.test($("#txtItemId").val()) && regExItemName.test($("#txtItemName").val()) && regExPrice.test($("#txtItemPrice").val()) && regExQty.test($("#txtItemQty").val())) {
+
+    if (itemNotExist() && regExItemId.test($("#itemId").val()) && regExItemName.test($("#itemName").val()) && regExPrice.test($("#price").val()) && regExQty.test($("#Qty").val())) {
         $("#AddItem").attr('disabled', false);
     } else {
         $("#AddItem").attr('disabled', true);
     }
+
 }
 
-function addItem() {
+
+$("#itemId").keyup(function (e) {
+    enableAddItem();
+    validateItemId(e.key);
+
+});
+
+$("#itemName").keyup(function (e) {
+    enableAddItem();
+    validateItemName(e.key);
+});
+
+$("#price").keyup(function (e) {
+    enableAddItem();
+    validatePrice(e.key);
+
+});
+
+$("#Qty").keyup(function (e) {
+    enableAddItem();
+    validateQty(e.key);
+});
+
+
+function saveItem() {
+
     let saveItem = confirm("Do you want to save this item?");
     if (saveItem.valueOf()) {
-        let itemName = $("#txtItemName").val();
-        let itemId = $("#txtItemId").val();
-        let itemPrice = $("#txtItemPrice").val();
-        let itemQty = $("#txtItemQty").val();
+        var data = $("#itemForm").serialize();
+        console.log(data);
+        $.ajax({
+            url: "http://localhost:8080/BackEnd/item",
+            method: "POST",
+            data: data,
+            success: function (res) {
+                console.log(res);
+                if (res.status == 200) {
+                    console.log(res)
+                    alert(res.message);
+                    loadAllItems();
+                    clearItem();
+                    /* generateItemId();
+                     loadAllItemIds();*/
+                } else {
+                    alert(res.data);
+                }
 
-        items.push(new ItemDTO(itemId, itemName, itemPrice, itemQty));
+            },
+            error: function (ob, textStatus, error) {
+                console.log(ob);
+                console.log(textStatus);
+                console.log(error);
+                console.log()
+            }
+        });
 
 
-        loadAllItems();
-        clearItem();
-        generateItemId();
     }
 
 }
@@ -115,101 +155,174 @@ function addItem() {
 function updateItem() {
     let updateItem = confirm("Do you want to update this item?");
     if (updateItem.valueOf()) {
-        items.find(function (e) {
-            if (e.getId() == $("#txtItemId").val()) {
-                e.setName($("#txtItemName").val());
-                e.setPrice($("#txtItemPrice").val());
-                e.setQty($("#txtItemQty").val());
+        var item = {
+            id: $("#itemId").val(),
+            itemName: $("#itemName").val(),
+            price: $("#price").val(),
+            qty: $("#Qty").val()
+        }
+
+        $.ajax({
+            url: "http://localhost:8080/BackEnd/item",
+            method: "PUT",
+            data: JSON.stringify(item),
+            success: function (res) {
+                console.log(res);
+                if (res.status == 200) {
+                    alert(res.message);
+                    loadAllItems();
+                    clearItem();
+                    /*   generateItemId();*/
+                } else if (res.status == 400) {
+                    alert(res.message);
+                } else {
+                    alert(res.data);
+                }
+
+            },
+            error: function (ob, textStatus, error) {
+                console.log(ob);
+                console.log(textStatus);
+                console.log(error);
             }
         });
 
-        loadAllItems();
-        clearItem();
-        generateItemId();
+
     }
+}
+
+function findItem() {
+    let itemId = $("#itemSearchID").val();
+    console.log(itemId)
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/item?option=SEARCH&itemId="+ itemId,
+        method: "GET",
+        success: function (resp) {
+            $("#itemId").val(resp.itemId);
+            $("#itemName").val(resp.itemName);
+            $("#price").val(resp.price);
+            $("#Qty").val(resp.qty);
+
+        },
+        error: function (ob, statusText, error) {
+            alert("There is no item with this ID");
+        }
+    });
+
 
 }
 
 function deleteItem() {
     let deleteItem = confirm("Do you want to delete this item?");
     if (deleteItem.valueOf()) {
-        items.find(function (e) {
-            if (e.getId() == $("#txtItemId").val()) {
-                items.splice(items.indexOf(e), 1);
+        var itemId=$("#itemId").val();
+        $.ajax({
+            url: "http://localhost:8080/BackEnd/item?itemId=" + itemId,
+            method: "DELETE",
+            success: function (resp) {
+
+                alert(itemId+" Customer Successfully Deleted.");
+                loadAllItems();
+                clearItem();
+                /*  generateItemId();
+                  loadAllItemIds();*/
+
+            },
+            error: function (ob, statusText, error) {
+                alert(statusText);
+                /* loadAllItems();*/
             }
         });
 
-        loadAllItems();
-        clearItem();
-        generateItemId();
     }
 
 }
 
-function loadAllItems(){
-    $("#itemTable>tr").remove();
 
-    for (let item of items) {
+/*function generateItemId() {
+    var tempId;
+    if (items.length != 0) {
 
-        let row = `<tr><td>${item.getId()}</td><td>${item.getName()}</td><td>${item.getPrice()}</td><td>${item.getQty()}</td></tr>`;
-        $("#itemTable").append(row);
+        var id = items[items.length - 1].getId();
+        var temp = id.split("-")[1];
+        temp++;
+        tempId = (temp < 10) ? "I-00" + temp : (temp < 100) ? "I-0" + temp : "I-" + temp;
 
-        $("#itemTable>tr").off('click');
-        $("#itemTable>tr").off('dblclick');
-
-        $("#itemTable>tr").click(function () {
-            let id = $(this).children(':first-child').html();
-            let itemName = $(this).children(':nth-child(2)').html();
-            let price = $(this).children(':nth-child(3)').html();
-            let qty = $(this).children(':nth-child(4)').html();
-
-            $("#txtItemId").val(id);
-            $("#txtItemName").val(itemName);
-            $("#txtItemPrice").val(price);
-            $("#txtItemQty").val(qty);
-        });
-
-        $("#itemTable>tr").dblclick(function () {
-            var itemRowId =$(this).children(':first-child').html();
-            items.find(function (e){
-                if(e.getId()==itemRowId){
-                    items.splice(items.indexOf(e),1);
-                }
-            });
-
-            loadAllItems();
-            clearItem();
-        });
+    } else {
+        tempId = "I-001";
     }
+    $("#itemId").val(tempId);
+}*/
+
+
+function loadAllItems() {
+
+    $.ajax({
+        url: "http://localhost:8080/BackEnd/item?option=GETALL",
+        method: "GET",
+        success: function (resp) {
+
+            $("#itemTbl>tr").remove();
+
+            itemsArray=resp.data;
+            for (let item of resp.data) {
+                let row = `<tr><td>${item.itemId}</td><td>${item.itemName}</td><td>${item.price}</td><td>${item.qty}</td></tr>`;
+                $("#itemTbl").append(row);
+            }
+            $("#itemTbl>tr").off('click');
+            $("#itemTbl>tr").off('dblclick');
 
 
 
-}
-////////////////
-function clearItem() {
-    $("#txtItemId").val("");
-    $("#txtItemId").css('border-color', 'Silver');
-    $("#txtItemName").val("");
-    $("#txtItemName").css('border-color', 'Silver');
-    $("#txtItemPrice").val("");
-    $("#txtItemPrice").css('border-color', 'Silver');
-    $("#txtItemQty").val("");
-    $("#txtItemQty").css('border-color', 'Silver');
-    enableAddItem();
-}
+            bindClickEventsItem();
 
-function itemNotExist(){
-    for (let item of items) {
-        if (item.getId()==$("#txtItemId").val()){
-            return false;
+        },
+        error: function (ob, statusText, error) {
+            alert(statusText);
         }
-    }
-    return true;
+    });
+
+
+
+
+
+}
+
+function bindClickEventsItem(){
+    $("#itemTbl>tr").click(function () {
+        let id = $(this).children(':first-child').html();
+        let itemName = $(this).children(':nth-child(2)').html();
+        let price = $(this).children(':nth-child(3)').html();
+        let qty = $(this).children(':nth-child(4)').html();
+
+        $("#itemId").val(id);
+        $("#itemName").val(itemName);
+        $("#price").val(price);
+        $("#Qty").val(qty);
+    });
+
+    $("#itemTbl>tr").dblclick(function () {
+        deleteItem();
+    });
+}
+
+function clearItem() {
+    $("#itemId").val("");
+    $("#itemId").css('border-color', 'Silver');
+    $("#itemName").val("");
+    $("#itemName").css('border-color', 'Silver');
+    $("#price").val("");
+    $("#price").css('border-color', 'Silver');
+    $("#Qty").val("");
+    $("#Qty").css('border-color', 'Silver');
+    enableAddItem();
+    /*generateItemId();*/
 }
 
 
 $("#AddItem").click(function () {
-    addItem();
+    saveItem();
+
 });
 
 $("#UpdateItem").click(function () {
@@ -220,8 +333,15 @@ $("#DeleteItem").click(function () {
     deleteItem();
 });
 
+$("#searchItem").click(function () {
+    findItem();
+
+});
+
 $("#cancelItem").click(function () {
     clearItem();
-    generateItemId();
+
 });
+
+
 
